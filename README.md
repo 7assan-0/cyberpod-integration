@@ -1,21 +1,19 @@
 # CyberPod Integration
 
-Auth + `/api/v1` + Infra adapter + image definitions for Kali and Hydra target.
+Auth + `/api/v1` + Infra adapter + images + desktop Gateway.
 
-## الصور
+## Gateway
 
 ```bash
-bash images/build.sh
+PYTHONPATH=src python -m aiohttp.web -H 127.0.0.1 -P 8088 cyberpod_gateway.app:create_app
 ```
 
-يبني `cyberpod/kali-desktop:dev` و `cyberpod/hydra-target:dev`. في هذه البيئة البناء محجوب (لا Docker) ويخرج 77.
-
-التحقق بدون Docker:
+الطالب يأخذ `/desktop/{session}/?t=TICKET` فقط. العنوان الخلفي لـ noVNC لا يُرجع. Stop/logout يستدعي `/internal/revoke`.
 
 ```bash
-python3 -m unittest tests.test_image_contracts tests.test_hydra_target -v
+python3 -m unittest tests.test_desktop_gateway -v
 ```
 
 ## ما لم يُنجز بعد
 
-Gateway لـ noVNC/WebSocket، عزل مستخدمين حي، حذف موارد مثبت، HTTPS، E2E كامل.
+عزل مستخدمين على عامل Docker حي، حذف موارد مثبت، HTTPS + rate limit، E2E كامل.
