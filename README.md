@@ -1,15 +1,16 @@
 # CyberPod Integration
 
-Auth, API, infra adapter, images, gateway, isolation, session reaper.
+Auth, API, infra adapter, images, gateway, isolation, reaper, hardening.
 
-## Cleanup
+## Hardening
 
 ```bash
-python3 -m unittest tests.test_session_reaper -v
+export CYBERPOD_REQUIRE_HTTPS=1
+python3 -m unittest tests.test_hardening -v
 ```
 
-`SessionReaper` يحذف الجلسة ثم يراجع: لا موارد Core، لا سجل runtime، لا تذاكر سطح المكتب، Infra CLEANED. `sweep()` يكشف اليتامة.
+يرفض HTTPS عبر `X-Forwarded-Proto` + HSTS، يحدّ من الطلبات (429 + Retry-After)، ويسجّل JSON بدون أسرار.
 
 ## ما لم يُنجز بعد
 
-HTTPS + rate limit + سجلات، E2E كامل.
+اختبار End-to-End كامل من Login إلى Score إلى Cleanup.
