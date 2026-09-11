@@ -1,17 +1,8 @@
-# CyberPod Integration — Auth + `/api/v1`
+# CyberPod Integration
 
-هذه خطوة التكامل الأولى بعد نسخة العرض: عقد طالب موحّد على Core مع جلسة حقيقية.
-
-يغطي البندين 1 و2 من قائمة ما قبل النشر:
-
-1. Authentication موحد للواجهة: cookie HttpOnly + CSRF.
-2. واجهة `/api/v1` بنفس غلاف Frontend: `{ session }`, `{ labs }`, `{ flag, expected_revision }`.
-
-مسارات Core القديمة بـ Bearer ما زالت موجودة للخدمات الداخلية.
+Auth + `/api/v1` + Runtime adapter to Astra #2 (`cyberpod.infra/v1`).
 
 ## التشغيل
-
-Python 3.12+
 
 ```bash
 python -m venv .venv
@@ -19,28 +10,29 @@ python -m venv .venv
 .venv/bin/python -m cyberpod_core --demo --labs labs
 ```
 
-الخادم: `http://127.0.0.1:8000`
-
-- Email: `demo@cyberpod.local`
-- Password: `CyberPodDemo123!`
-- Flag: `CYBERPOD{hydra_ssh_cracked}`
+`--demo` يبقي MemoryRuntime. لتجربة الـ adapter بدون Docker:
 
 ```bash
-curl -c cookies -b cookies -H 'content-type: application/json' \
-  -d '{"email":"demo@cyberpod.local","password":"CyberPodDemo123!"}' \
-  http://127.0.0.1:8000/api/v1/auth/login
+export CYBERPOD_INFRA_MODE=memory
+# Engine(…, runtime=cyberpod_core.infra_runtime.memory_factory())
 ```
 
-استخدم `csrf_token` في الرأس `X-CSRF-Token` مع كل POST.
+عامل Linux فيه Docker + حزمة Astra #2:
+
+```bash
+export CYBERPOD_INFRA_MODE=cli
+export CYBERPOD_INFRA_POLICY=/etc/cyberpod-infra/worker.json
+.venv/bin/python -m cyberpod_core --runtime-factory cyberpod_core.infra_runtime:factory --tokens tokens.json --labs labs
+```
 
 ## الاختبار
 
 ```bash
-.venv/bin/python -m unittest discover -s tests -t . -v
+.venv/bin/python -m unittest tests.test_infra_adapter -v
 ```
 
-76 اختبارًا محليًا ناجحة في هذه البيئة.
+الـ adapter يحوّل Lab Core إلى طلب `cyberpod.infra/v1` ويُرجع READY/CLEANED إلى RuntimeSnapshot. لا يشغّل Docker من Core.
 
 ## ما لم يُنجز بعد
 
-Docker adapter، صور Kali/Target، Gateway لـ noVNC، عزل حي، HTTPS، E2E كامل.
+بناء صور Kali/Target على عامل Docker، Gateway لـ noVNC، عزل مستخدمين حي، HTTPS، E2E كامل.
