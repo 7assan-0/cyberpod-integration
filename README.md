@@ -1,19 +1,15 @@
 # CyberPod Integration
 
-Auth + `/api/v1` + Infra adapter + images + desktop Gateway.
+Auth, API, infra adapter, images, gateway, concurrent isolation.
 
-## Gateway
-
-```bash
-PYTHONPATH=src python -m aiohttp.web -H 127.0.0.1 -P 8088 cyberpod_gateway.app:create_app
-```
-
-الطالب يأخذ `/desktop/{session}/?t=TICKET` فقط. العنوان الخلفي لـ noVNC لا يُرجع. Stop/logout يستدعي `/internal/revoke`.
+## عزل مستخدمين
 
 ```bash
-python3 -m unittest tests.test_desktop_gateway -v
+python3 -m unittest tests.test_concurrent_isolation -v
 ```
+
+طالبان يبدآن معًا: جلسات منفصلة، موارد Infra منفصلة، قائمة جلسات للمالك فقط، تذكرة سطح المكتب غير قابلة للنقل، حذف جلسة A لا يوقف B.
 
 ## ما لم يُنجز بعد
 
-عزل مستخدمين على عامل Docker حي، حذف موارد مثبت، HTTPS + rate limit، E2E كامل.
+حذف موارد Docker الفعلي، HTTPS + rate limit، E2E كامل.
