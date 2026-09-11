@@ -1,0 +1,46 @@
+{
+  "api_version": "cyberpod.infra/v1",
+  "session_id": "00000000-0000-4000-8000-000000000001",
+  "lab_id": "hydra-ssh-101",
+  "expires_at": 1893456000,
+  "startup_timeout_seconds": 120,
+  "network": { "internet": "none", "allow": [] },
+  "volumes": [
+    { "id": "desktop-home", "size_mb": 512, "uid": 1000, "gid": 1000 },
+    { "id": "desktop-tmp", "size_mb": 128, "uid": 1000, "gid": 1000 }
+  ],
+  "services": [
+    {
+      "id": "kali",
+      "image": "cyberpod/kali-desktop:dev",
+      "user": "1000:1000",
+      "resources": { "cpus": 2.0, "memory_mb": 2048, "pids": 256, "shm_mb": 128 },
+      "tmpfs": [{ "path": "/tmp", "size_mb": 128, "exec": false }],
+      "volumes": [
+        { "volume": "desktop-home", "target": "/home/student", "read_only": false },
+        { "volume": "desktop-tmp", "target": "/var/tmp", "read_only": false }
+      ],
+      "healthcheck": {
+        "test": ["CMD", "/opt/cyberpod/bin/healthcheck.sh"],
+        "interval_seconds": 10,
+        "timeout_seconds": 5,
+        "retries": 6,
+        "start_period_seconds": 30
+      },
+      "endpoints": [{ "name": "novnc", "port": 6080, "protocol": "http" }]
+    },
+    {
+      "id": "target",
+      "image": "cyberpod/hydra-target:dev",
+      "user": "1000:1000",
+      "resources": { "cpus": 0.5, "memory_mb": 256, "pids": 32, "shm_mb": 16 },
+      "healthcheck": {
+        "test": ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=1)"],
+        "interval_seconds": 3,
+        "timeout_seconds": 2,
+        "retries": 10
+      },
+      "endpoints": [{ "name": "http", "port": 8080, "protocol": "http" }]
+    }
+  ]
+}
