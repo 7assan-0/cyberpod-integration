@@ -1,16 +1,11 @@
 # CyberPod Integration
 
-Auth, API, infra adapter, images, gateway, isolation, reaper, hardening.
+بنود قائمة ما قبل النشر العشر مغطاة على طبقات Core/الواجهة. بناء Docker الحي يحتاج عامل Linux.
 
-## Hardening
+## E2E
 
 ```bash
-export CYBERPOD_REQUIRE_HTTPS=1
-python3 -m unittest tests.test_hardening -v
+python3 -m unittest tests.test_e2e_login_score_cleanup -v
 ```
 
-يرفض HTTPS عبر `X-Forwarded-Proto` + HSTS، يحدّ من الطلبات (429 + Retry-After)، ويسجّل JSON بدون أسرار.
-
-## ما لم يُنجز بعد
-
-اختبار End-to-End كامل من Login إلى Score إلى Cleanup.
+Login → قائمة المخابر → Start → علم خاطئ → علم صحيح (100/100) → Cleanup بلا موارد.
