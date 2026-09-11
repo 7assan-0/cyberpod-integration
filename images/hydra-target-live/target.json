@@ -1,0 +1,8 @@
+{
+  "session_id": "00000000-0000-4000-8000-000000000001",
+  "generation": 1,
+  "username": "admin",
+  "password": "password",
+  "flag": "CYBERPOD{hydra_ssh_cracked}",
+  "expires_at": 1893456000
+}
