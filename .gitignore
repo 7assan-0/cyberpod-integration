@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+var/
+*.sqlite*
+*.lock
+credentials*.json
+build/
+dist/
