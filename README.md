@@ -1,11 +1,9 @@
 # CyberPod Integration
 
-بنود قائمة ما قبل النشر العشر مغطاة على طبقات Core/الواجهة. بناء Docker الحي يحتاج عامل Linux.
+تحقق 2026-09-11: **80 اختبارًا ناجحة** (ـ 70 Core + 10 تكامل).
 
-## E2E
+خطأ وُجد وأُصلح: معرّفات حجم Memory Infra كانت `vol-scratch` مشتركة بين الطلاب. الآن تُسبق بـ session_id.
 
-```bash
-python3 -m unittest tests.test_e2e_login_score_cleanup -v
-```
+هذا المستودع يحتوي طبقات التكامل. لتشغيل الاختبار كاملة يلزم Core Astra #1 (`engine`/`models`/`labs/hello-lab`).
 
-Login → قائمة المخابر → Start → علم خاطئ → علم صحيح (100/100) → Cleanup بلا موارد.
+Docker الحي غير متوفر في بيئة التحقق.
