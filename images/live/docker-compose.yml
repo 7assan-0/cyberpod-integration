@@ -1,0 +1,19 @@
+services:
+  target:
+    image: cyberpod/hydra-target:dev
+    build: ../hydra-target-live
+    user: "1000:1000"
+    networks: [lab]
+    ports: ["8080:8080"]
+  kali:
+    image: cyberpod/kali-desktop:dev
+    build: ../kali-desktop-live
+    user: "1000:1000"
+    environment:
+      TARGET_URL: http://target:8080
+    networks: [lab]
+    ports: ["6080:6080"]
+    depends_on: [target]
+networks:
+  lab:
+    driver: bridge
