@@ -1,9 +1,15 @@
 # CyberPod Integration
 
-تحقق 2026-09-11: **80 اختبارًا ناجحة** (ـ 70 Core + 10 تكامل).
+طبقة العقد الطلابي `/api/v1` فوق Core: جلسة كوكي، CSRF، وDTO الآمن للفرونت.
 
-خطأ وُجد وأُصلح: معرّفات حجم Memory Infra كانت `vol-scratch` مشتركة بين الطلاب. الآن تُسبق بـ session_id.
+المسارات:
 
-هذا المستودع يحتوي طبقات التكامل. لتشغيل الاختبار كاملة يلزم Core Astra #1 (`engine`/`models`/`labs/hello-lab`).
+- `POST /api/v1/auth/login` `POST /api/v1/auth/logout` `GET /api/v1/auth/me`
+- `GET /api/v1/labs` `GET /api/v1/labs/{id}`
+- `POST /api/v1/labs/{id}/sessions`
+- `GET /api/v1/sessions/{id}/status`
+- `POST /api/v1/sessions/{id}/start|stop|restart|flags|cleanup`
 
-Docker الحي غير متوفر في بيئة التحقق.
+معرّفات Infra مسبوقة بـ `session_id` حتى لا تتشارك جلستان `vol-*` أو `ctr-*`.
+
+لتشغيل الاختبارات يلزم Core Astra #1 على `PYTHONPATH` مع هذه الطبقة فوقه. Docker الحي غير مشمول هنا.
