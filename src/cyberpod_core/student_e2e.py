@@ -4,19 +4,20 @@ from uuid import uuid4
 from aiohttp import web
 from .errors import CoreError
 from .models import CreateSession, Evaluation, FlagSubmission, Principal
+from .session_secrets import SessionVault
 
 COOKIE = 'cyberpod_session'
 USERS = {'demo@cyberpod.local': ('CyberPodDemo123!', Principal(subject='demo-student', scopes={'student'}))}
-FLAG = 'CYBERPOD{hydra_ssh_cracked}'
 
 class ScoreValidator:
-    def __init__(self):
+    def __init__(self, vault: SessionVault):
+        self.vault = vault
         self.seen = {}
     async def submit(self, context, submission):
         key = (context.session_id, context.generation, submission.submission_id)
         if key in self.seen:
             return self.seen[key]
-        accepted = hmac.compare_digest(submission.value, FLAG)
+        accepted = self.vault.check(str(context.session_id), context.generation, submission.value)
         result = Evaluation(
             result_id=uuid4(), session_id=context.session_id, lab_id=context.lab_id,
             generation=context.generation, revision=max(context.progress.revision, 0) + 1,
@@ -28,11 +29,13 @@ class ScoreValidator:
         self.seen[key] = result
         return result
 
-def create_student_app(engine, users=USERS):
+def create_student_app(engine, users=USERS, vault=None):
+    vault = vault or SessionVault()
     app = web.Application()
     app['engine'] = engine
     app['users'] = users
     app['sessions'] = {}
+    app['vault'] = vault
     def current(request):
         record = app['sessions'].get(request.cookies.get(COOKIE))
         if record is None:
@@ -41,12 +44,16 @@ def create_student_app(engine, users=USERS):
             raise CoreError('CSRF_INVALID', 'CSRF token mismatch', 403)
         return record['principal']
     def payload(session):
-        return {'session': {
+        body = {'session': {
             'id': str(session.session_id), 'lab_id': session.lab_id, 'status': session.status.value,
             'revision': session.revision, 'score': session.progress.score,
             'maximum_score': session.progress.maximum_score, 'completed': session.progress.completed,
             'generation': session.generation,
         }}
+        dumped = str(body)
+        if 'CYBERPOD{' in dumped:
+            raise CoreError('INTERNAL_ERROR', 'Secret leaked into student payload', 500)
+        return body
     async def login(request):
         body = await request.json()
         record = users.get(body.get('email'))
@@ -68,7 +75,9 @@ def create_student_app(engine, users=USERS):
         sid = request.match_info['session_id']
         await engine.command(sid, 'start', principal)
         await engine.wait_idle(sid)
-        return web.json_response(payload(engine.get(sid, principal)))
+        session = engine.get(sid, principal)
+        vault.issue(str(session.session_id), session.generation)
+        return web.json_response(payload(session))
     async def flags(request):
         principal = current(request)
         sid = request.match_info['session_id']
@@ -79,15 +88,15 @@ def create_student_app(engine, users=USERS):
         updated = await engine.submit_flag(sid, principal, FlagSubmission(
             submission_id=uuid4(), generation=session.generation,
             flag_id=body.get('flag_id') or 'vault', value=body.get('flag') or ''))
-        result = 'ACCEPTED' if updated.progress.flags.get('vault') == 'accepted' else 'INCORRECT'
         data = payload(updated)
-        data['flag'] = result
+        data['flag'] = 'ACCEPTED' if updated.progress.flags.get('vault') == 'accepted' else 'INCORRECT'
         return web.json_response(data)
     async def cleanup(request):
         principal = current(request)
         sid = request.match_info['session_id']
         await engine.command(sid, 'cleanup', principal)
         await engine.wait_idle(sid)
+        vault.drop(sid)
         return web.json_response(payload(engine.get(sid, principal)))
     @web.middleware
     async def errors(request, handler):
