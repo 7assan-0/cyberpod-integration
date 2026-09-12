@@ -11,12 +11,38 @@ import time
 from uuid import uuid4
 
 
-async def check_gateway(session_id, port, password):
+async def check_gateway(session_id, desktop_ip, password):
     from aiohttp import web
     from playwright.async_api import async_playwright, expect
     from cyberpod_core.hardening import apply_hardening
     from cyberpod_gateway.app import DesktopGateway, create_app
 
+    # Internal Docker networks deliberately do not publish host ports. Model
+    # the trusted worker-side tunnel with one fixed, verified container IP.
+    connections = set()
+    async def forward(reader, writer):
+        task = asyncio.current_task()
+        connections.add(task)
+        remote_writer = None
+        jobs = []
+        async def copy(source, destination):
+            while data := await source.read(65536):
+                destination.write(data)
+                await destination.drain()
+        try:
+            remote_reader, remote_writer = await asyncio.wait_for(asyncio.open_connection(desktop_ip, 8080), 5)
+            jobs = [asyncio.create_task(copy(reader, remote_writer)), asyncio.create_task(copy(remote_reader, writer))]
+            await asyncio.wait(jobs, return_when=asyncio.FIRST_COMPLETED)
+        finally:
+            for job in jobs:
+                job.cancel()
+            await asyncio.gather(*jobs, return_exceptions=True)
+            for stream in (writer, remote_writer):
+                if stream:
+                    stream.close()
+            connections.discard(task)
+    tunnel = await asyncio.start_server(forward, '127.0.0.1', 0)
+    port = tunnel.sockets[0].getsockname()[1]
     gateway = DesktopGateway(public_base='')
     gateway.register(session_id, f'http://127.0.0.1:{port}', password)
     app = create_app(gateway, operator_token=secrets.token_urlsafe(32), subject_for_request=lambda _: 'image-smoke')
@@ -43,6 +69,11 @@ async def check_gateway(session_id, port, password):
                 await browser.close()
     finally:
         await runner.cleanup()
+        tunnel.close()
+        await tunnel.wait_closed()
+        for connection in list(connections):
+            connection.cancel()
+        await asyncio.gather(*list(connections), return_exceptions=True)
     print('PASS: Chrome connects to actual Kali through the authenticated gateway; revocation disconnects it')
 
 
@@ -93,7 +124,6 @@ def main():
             names.append(desktop)
             vnc_password = secrets.token_urlsafe(18)
             run('docker', 'run', '-d', '--name', desktop, '--network', networks[0], '--user', '1000:1000',
-                '-p', '127.0.0.1::8080',
                 '--read-only', '--cap-drop=ALL', '--security-opt', 'no-new-privileges', '--memory', '2g', '--pids-limit', '256',
                 '--shm-size', '128m', '--tmpfs', '/home/student:rw,nosuid,nodev,size=512m,uid=1000,gid=1000,mode=0700',
                 '--tmpfs', '/tmp:rw,nosuid,nodev,size=128m,mode=1777',
@@ -109,8 +139,8 @@ def main():
             run('docker', 'exec', desktop, 'python3', '-c', isolated)
             run('docker', 'exec', desktop, 'sh', '-c', 'command -v hydra && command -v nmap && command -v firefox-esr')
             print('PASS: actual XFCE/VNC/noVNC health, training target login, and cross-network connection rejection')
-            port = run('docker', 'port', desktop, '8080/tcp').stdout.strip().rsplit(':', 1)[1]
-            asyncio.run(check_gateway(session_id, int(port), vnc_password))
+            desktop_ip = run('docker', 'inspect', '--format', '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}', desktop).stdout.strip()
+            asyncio.run(check_gateway(session_id, desktop_ip, vnc_password))
         finally:
             for name in reversed(names):
                 run('docker', 'rm', '-f', name, check=False)
