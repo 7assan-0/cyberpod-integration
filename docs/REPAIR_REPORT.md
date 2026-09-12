@@ -17,12 +17,13 @@ The original public checkout could not run its tests or entrypoint: it omitted C
 - Removed fixed Hydra answers from shared Core validator logic and student instructions. Demo validator instances take operator-provided mappings; session-bound evaluation uses manifest task/flag IDs.
 - Fixed duplicate simulated resource IDs, destructive-worker restart calls, invented inventory and CLI string error handling. Live translation rejects unsupported policies rather than silently changing requested mounts or shrinking resources.
 - Gateway now checks ticket ownership, closes active sockets on revocation/expiry, handles binary frames, preserves query/body/compression, strips control-plane credentials, and requires an operator secret and identity adapter.
+- Desktop assets have a separate bounded request budget, so noVNC loading does not block student API polling. Same-origin grants and secure desktop cookies follow deployment settings.
 - Forwarded client/HTTPS headers are used only for explicitly trusted proxy addresses.
 - Restored real image build inputs; renamed the former placeholder image tags so they cannot overwrite real Kali/target images. Probe ports bind to loopback.
 
 ## Verification
 
-- 94 Core, API, gateway and regression tests passed locally.
+- 96 Core, API, gateway and regression tests passed locally.
 - 39 worker tests passed locally.
 - Student entrypoint help and frontend production build passed.
 - Chrome browser simulation checks (desktop/mobile) and the frontend-to-student-API lifecycle passed in GitHub Actions.

@@ -18,11 +18,12 @@ def _ticket_from(request):
 
 
 class DesktopGateway:
-    def __init__(self, store=None, *, frame_ancestors="'self'", public_base='http://127.0.0.1:8088'):
+    def __init__(self, store=None, *, frame_ancestors="'self'", public_base='', secure_cookies=None):
         self.store = store or TicketStore()
         self.upstreams = {}
         self.frame_ancestors = frame_ancestors
         self.public_base = public_base.rstrip('/')
+        self.secure_cookies = secure_cookies
         self._client = None
         self._connections = {}
         self._closing = set()
@@ -123,7 +124,8 @@ class DesktopGateway:
                     outgoing.headers['Location'] = f'/desktop/{session_id}/{relative}'
                 outgoing.headers.update(self._secure_headers())
                 if tail in {'', 'vnc.html', 'desktop.html'}:
-                    outgoing.set_cookie('cyberpod_desktop', ticket.token, httponly=True, secure=self.public_base.startswith('https://'),
+                    secure = self.secure_cookies if self.secure_cookies is not None else request.secure or self.public_base.startswith('https://')
+                    outgoing.set_cookie('cyberpod_desktop', ticket.token, httponly=True, secure=secure,
                                         samesite='Lax', path=f'/desktop/{session_id}/')
                 return outgoing
         except (ClientError, TimeoutError):

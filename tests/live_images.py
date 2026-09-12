@@ -17,8 +17,8 @@ async def check_gateway(session_id, desktop_ip, password):
     from cyberpod_core.hardening import apply_hardening
     from cyberpod_gateway.app import DesktopGateway, create_app
 
-    # Internal Docker networks deliberately do not publish host ports. Model
-    # the trusted worker-side tunnel with one fixed, verified container IP.
+    # Model the trusted worker-side tunnel with one fixed container endpoint.
+    # The gateway only accepts loopback upstreams.
     connections = set()
     async def forward(reader, writer):
         task = asyncio.current_task()
@@ -30,7 +30,7 @@ async def check_gateway(session_id, desktop_ip, password):
                 destination.write(data)
                 await destination.drain()
         try:
-            remote_reader, remote_writer = await asyncio.wait_for(asyncio.open_connection(desktop_ip, 8080), 5)
+            remote_reader, remote_writer = await asyncio.wait_for(asyncio.open_connection(desktop_ip, 6080), 5)
             jobs = [asyncio.create_task(copy(reader, remote_writer)), asyncio.create_task(copy(remote_reader, writer))]
             await asyncio.wait(jobs, return_when=asyncio.FIRST_COMPLETED)
         finally:

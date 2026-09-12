@@ -212,6 +212,7 @@ def create_student_app(engine, users=None, vault=None, *, gateway=None, secure_c
     app.router.add_post('/api/v1/sessions/{session_id}/flags', flags)
     app.router.add_post('/api/v1/sessions/{session_id}/{action:start|stop|restart|cleanup}', lifecycle)
     if gateway:
+        gateway.secure_cookies = secure_cookies
         gateway.subject_for_request = lambda request: current(request).subject
         app.router.add_route('*', '/desktop/{session_id}/', gateway.page)
         app.router.add_route('*', '/desktop/{session_id}/{path:.*}', gateway.page)

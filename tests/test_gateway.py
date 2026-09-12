@@ -46,6 +46,13 @@ class GatewayTests(AioHTTPTestCase):
         self.assertEqual((await response.json())['password'], 'Password123')
         self.gateway.revoke(self.sid)
         self.assertEqual((await self.client.get(f'/desktop/{self.sid}/?t={self.ticket.token}')).status, 403)
+    async def test_same_origin_grants_honor_secure_cookie_configuration(self):
+        self.gateway.secure_cookies = True
+        url, _ = self.gateway.issue_url(self.sid, 'alice', 1)
+        self.assertTrue(url.startswith(f'/desktop/{self.sid}/'))
+        response = await self.client.get(url)
+        self.assertEqual(response.status, 200)
+        self.assertTrue(response.cookies['cyberpod_desktop']['secure'])
     async def test_open_binary_socket_closes_immediately_on_revoke(self):
         ws = await self.client.ws_connect(f'/desktop/{self.sid}/websockify?t={self.ticket.token}', protocols=('binary',))
         await ws.send_bytes(b'frame')
