@@ -24,7 +24,7 @@ containers:
     run_as: "1000:1000"
     read_only_rootfs: true
 tasks:
-  - {id: crack, title: Recover the vault flag, instructions: Submit the training flag.}
+  - {id: crack, title: Recover the vault flag, instructions: Submit the training flag., extensions: {points: 100}}
 flags:
   - {id: vault, label: Vault flag, secret_ref: provider-secret}
 validator: {id: e2e-validator, config: {}}

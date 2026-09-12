@@ -15,3 +15,12 @@ jobs:
       - run: python -m unittest discover -s tests -t . -v
       - run: python -m unittest discover -s infrastructure/tests -v
       - run: python -m cyberpod_integration --help
+  images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build real Kali and target images
+        run: bash images/build.sh
+      - name: Boot desktop, reach target, check isolation and cleanup
+        run: python tests/live_images.py

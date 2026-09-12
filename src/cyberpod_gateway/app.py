@@ -51,11 +51,11 @@ class DesktopGateway:
             task.add_done_callback(self._closing.discard)
         return self.store.revoke_session(session_id)
 
-    def issue_url(self, session_id, subject, generation):
+    def issue_url(self, session_id, subject, generation, expires_at=None):
         upstream = self.upstreams.get(session_id)
         if not upstream:
             raise KeyError('SESSION_UPSTREAM')
-        ticket = self.store.issue(session_id, subject, generation, upstream)
+        ticket = self.store.issue(session_id, subject, generation, upstream, expires_at=expires_at)
         return f'{self.public_base}/desktop/{session_id}/desktop.html?t={ticket.token}', ticket.expires_at
 
     def authorize(self, request, session_id):

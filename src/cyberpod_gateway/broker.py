@@ -7,7 +7,8 @@ class GatewayAccessBroker:
         self.gateway = gateway
 
     async def issue(self, context, principal):
-        url, expires = self.gateway.issue_url(str(context.session_id), principal.subject, context.generation)
+        url, expires = self.gateway.issue_url(str(context.session_id), principal.subject, context.generation,
+                                             expires_at=context.expires_at.timestamp())
         try:
             from cyberpod_core.models import AccessGrant
         except ImportError:

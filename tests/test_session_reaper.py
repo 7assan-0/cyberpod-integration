@@ -31,6 +31,8 @@ class FakeInfra:
                 'container': ['ctr-x'] if filled else [],
             },
         }
+    def stop(self, session_id, generation=None):
+        self.remember(session_id, 'CLEANED')
 
 class SessionReaperTests(Harness):
     async def test_cleanup_leaves_no_session_runtime_or_ticket(self):

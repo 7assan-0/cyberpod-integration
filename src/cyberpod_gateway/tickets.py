@@ -17,13 +17,16 @@ class TicketStore:
         self._tickets = {}
         self._by_session = {}
 
-    def issue(self, session_id, subject, generation, upstream, now=None):
+    def issue(self, session_id, subject, generation, upstream, now=None, expires_at=None):
         now = time.time() if now is None else now
         for token, previous in list(self._tickets.items()):
             if previous.expires_at <= now or (previous.session_id == session_id and previous.generation != generation):
                 self._drop(token)
         token = secrets.token_urlsafe(32)
-        ticket = Ticket(token, session_id, subject, generation, now + self.ttl_seconds, upstream.rstrip('/'))
+        deadline = min(now + self.ttl_seconds, expires_at) if expires_at is not None else now + self.ttl_seconds
+        if deadline <= now:
+            raise PermissionError('TICKET_EXPIRED')
+        ticket = Ticket(token, session_id, subject, generation, deadline, upstream.rstrip('/'))
         self._tickets[token] = ticket
         self._by_session.setdefault(session_id, set()).add(token)
         return ticket

@@ -1,4 +1,5 @@
 from __future__ import annotations
+import asyncio
 from .errors import CoreError
 from .models import Principal, Status, context_for
 
@@ -14,10 +15,12 @@ class SessionReaper:
         await self.engine.wait_idle(session_id)
         session = self.engine.repo.get(session_id)
         if self.infra is not None:
-            state = self.infra.sessions.get(session_id)
-            if state is not None:
-                state['status'] = 'CLEANED'
-                state['resources'] = {'network': [], 'volume': [], 'container': []}
+            state = getattr(self.infra, 'sessions', {}).get(session_id)
+            if state is not None and state.get('status') != 'CLEANED':
+                stop = getattr(self.infra, 'stop', None)
+                if stop is None:
+                    raise CoreError('CLEANUP_INCOMPLETE', 'Worker state still contains resources', 503)
+                await asyncio.to_thread(stop, session_id, state.get('generation'))
         if self.occupancy is not None:
             self.occupancy.revoke(session_id)
         if self.gateway is not None:
@@ -48,7 +51,7 @@ class SessionReaper:
             if owned:
                 leftovers.append('runtime.store')
         if self.infra is not None:
-            state = self.infra.sessions.get(str(session.session_id))
+            state = getattr(self.infra, 'sessions', {}).get(str(session.session_id))
             if state:
                 grouped = state.get('resources') or {}
                 if any(grouped.get(kind) for kind in ('network', 'volume', 'container')):
