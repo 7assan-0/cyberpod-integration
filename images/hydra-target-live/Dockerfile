@@ -1,7 +1,8 @@
 FROM python:3.12-slim
 WORKDIR /app
-COPY app.py /app/app.py
-COPY target.json /app/target.json
+# Use the same validated target handler as the real target image.
+COPY hydra-target/app.py /app/app.py
+COPY hydra-target-live/target.json /app/target.json
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 BIND_HOST=0.0.0.0 PORT=8080 TARGET_CONFIG_FILE=/app/target.json
 USER 1000:1000
 EXPOSE 8080

@@ -1,0 +1,12 @@
+{
+  "suite": "real Docker lifecycle and isolation",
+  "status": "BLOCKED",
+  "checks": [],
+  "timestamp": 1789124212,
+  "error": {
+    "code": "DEPENDENCY_MISSING",
+    "message": "Missing executable: docker"
+  },
+  "passed": 0,
+  "failed": 0
+}

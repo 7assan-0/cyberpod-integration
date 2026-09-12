@@ -1,0 +1,627 @@
+{
+  "$defs": {
+    "AccessRequirement": {
+      "additionalProperties": false,
+      "properties": {
+        "extensions": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Extensions",
+          "type": "object"
+        },
+        "required": {
+          "default": false,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "container": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9-]{0,62}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Container"
+        },
+        "port": {
+          "anyOf": [
+            {
+              "maximum": 65535,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Port"
+        },
+        "protocol": {
+          "default": "http",
+          "enum": [
+            "http",
+            "websocket"
+          ],
+          "title": "Protocol",
+          "type": "string"
+        },
+        "path": {
+          "default": "/",
+          "maxLength": 512,
+          "pattern": "^/[^\\x00]*$",
+          "title": "Path",
+          "type": "string"
+        }
+      },
+      "title": "AccessRequirement",
+      "type": "object"
+    },
+    "Container": {
+      "additionalProperties": false,
+      "properties": {
+        "extensions": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Extensions",
+          "type": "object"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9-]{0,62}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "image": {
+          "maxLength": 512,
+          "minLength": 1,
+          "title": "Image",
+          "type": "string"
+        },
+        "role": {
+          "default": "target",
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Role",
+          "type": "string"
+        },
+        "command": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 128,
+          "title": "Command",
+          "type": "array"
+        },
+        "environment": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Environment",
+          "type": "object"
+        },
+        "secret_refs": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Secret Refs",
+          "type": "object"
+        },
+        "networks": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9-]{0,62}$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Networks",
+          "type": "array"
+        },
+        "ports": {
+          "items": {
+            "maximum": 65535,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "title": "Ports",
+          "type": "array"
+        },
+        "mounts": {
+          "items": {
+            "$ref": "#/$defs/Mount"
+          },
+          "title": "Mounts",
+          "type": "array"
+        },
+        "resources": {
+          "$ref": "#/$defs/ResourceLimits"
+        },
+        "healthcheck": {
+          "$ref": "#/$defs/Healthcheck"
+        },
+        "read_only_rootfs": {
+          "default": true,
+          "title": "Read Only Rootfs",
+          "type": "boolean"
+        },
+        "run_as": {
+          "default": "1000:1000",
+          "pattern": "^[0-9]+:[0-9]+$",
+          "title": "Run As",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "image",
+        "networks",
+        "healthcheck"
+      ],
+      "title": "Container",
+      "type": "object"
+    },
+    "FlagDefinition": {
+      "additionalProperties": false,
+      "properties": {
+        "extensions": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Extensions",
+          "type": "object"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9-]{0,62}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 8192,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "secret_ref": {
+          "anyOf": [
+            {
+              "maxLength": 512,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Secret Ref"
+        }
+      },
+      "required": [
+        "id",
+        "label"
+      ],
+      "title": "FlagDefinition",
+      "type": "object"
+    },
+    "Healthcheck": {
+      "additionalProperties": false,
+      "properties": {
+        "command": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 64,
+          "minItems": 1,
+          "title": "Command",
+          "type": "array"
+        },
+        "interval_seconds": {
+          "default": 2,
+          "maximum": 300,
+          "minimum": 1,
+          "title": "Interval Seconds",
+          "type": "integer"
+        },
+        "timeout_seconds": {
+          "default": 2,
+          "maximum": 60,
+          "minimum": 1,
+          "title": "Timeout Seconds",
+          "type": "integer"
+        },
+        "retries": {
+          "default": 15,
+          "maximum": 120,
+          "minimum": 1,
+          "title": "Retries",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "command"
+      ],
+      "title": "Healthcheck",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "Mount": {
+      "additionalProperties": false,
+      "properties": {
+        "volume": {
+          "pattern": "^[a-z][a-z0-9-]{0,62}$",
+          "title": "Volume",
+          "type": "string"
+        },
+        "path": {
+          "maxLength": 512,
+          "pattern": "^/[^\\x00]*$",
+          "title": "Path",
+          "type": "string"
+        },
+        "read_only": {
+          "default": false,
+          "title": "Read Only",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "volume",
+        "path"
+      ],
+      "title": "Mount",
+      "type": "object"
+    },
+    "Network": {
+      "additionalProperties": false,
+      "properties": {
+        "extensions": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Extensions",
+          "type": "object"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9-]{0,62}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "scope": {
+          "const": "session",
+          "default": "session",
+          "title": "Scope",
+          "type": "string"
+        },
+        "internet": {
+          "default": "none",
+          "enum": [
+            "none",
+            "restricted",
+            "allowed"
+          ],
+          "title": "Internet",
+          "type": "string"
+        },
+        "egress_allowlist": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Egress Allowlist",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "Network",
+      "type": "object"
+    },
+    "Plugin": {
+      "additionalProperties": false,
+      "properties": {
+        "extensions": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Extensions",
+          "type": "object"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9-]{0,62}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "config": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Config",
+          "type": "object"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "Plugin",
+      "type": "object"
+    },
+    "ResourceLimits": {
+      "additionalProperties": false,
+      "properties": {
+        "cpu": {
+          "default": 1,
+          "exclusiveMinimum": 0,
+          "maximum": 64,
+          "title": "Cpu",
+          "type": "number"
+        },
+        "memory_mb": {
+          "default": 512,
+          "maximum": 262144,
+          "minimum": 32,
+          "title": "Memory Mb",
+          "type": "integer"
+        },
+        "pids": {
+          "default": 128,
+          "maximum": 65536,
+          "minimum": 8,
+          "title": "Pids",
+          "type": "integer"
+        },
+        "storage_mb": {
+          "default": 1024,
+          "maximum": 1048576,
+          "minimum": 16,
+          "title": "Storage Mb",
+          "type": "integer"
+        }
+      },
+      "title": "ResourceLimits",
+      "type": "object"
+    },
+    "TaskDefinition": {
+      "additionalProperties": false,
+      "properties": {
+        "extensions": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Extensions",
+          "type": "object"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9-]{0,62}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 8192,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "instructions": {
+          "default": "",
+          "maxLength": 16384,
+          "title": "Instructions",
+          "type": "string"
+        },
+        "depends_on": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9-]{0,62}$",
+            "type": "string"
+          },
+          "title": "Depends On",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "title"
+      ],
+      "title": "TaskDefinition",
+      "type": "object"
+    },
+    "Volume": {
+      "additionalProperties": false,
+      "properties": {
+        "extensions": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Extensions",
+          "type": "object"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9-]{0,62}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "ephemeral": {
+          "const": true,
+          "default": true,
+          "title": "Ephemeral",
+          "type": "boolean"
+        },
+        "size_mb": {
+          "default": 256,
+          "maximum": 1048576,
+          "minimum": 16,
+          "title": "Size Mb",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "Volume",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "extensions": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "title": "Extensions",
+      "type": "object"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "id": {
+      "pattern": "^[a-z][a-z0-9-]{0,62}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "name": {
+      "maxLength": 8192,
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+    },
+    "description": {
+      "maxLength": 8192,
+      "minLength": 1,
+      "title": "Description",
+      "type": "string"
+    },
+    "version": {
+      "default": "1.0.0",
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Version",
+      "type": "string"
+    },
+    "enabled": {
+      "default": true,
+      "title": "Enabled",
+      "type": "boolean"
+    },
+    "difficulty": {
+      "enum": [
+        "beginner",
+        "intermediate",
+        "advanced",
+        "expert"
+      ],
+      "title": "Difficulty",
+      "type": "string"
+    },
+    "estimated_duration_minutes": {
+      "maximum": 1440,
+      "minimum": 1,
+      "title": "Estimated Duration Minutes",
+      "type": "integer"
+    },
+    "session_timeout_seconds": {
+      "default": 3600,
+      "maximum": 86400,
+      "minimum": 60,
+      "title": "Session Timeout Seconds",
+      "type": "integer"
+    },
+    "required_tools": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 100,
+      "title": "Required Tools",
+      "type": "array"
+    },
+    "containers": {
+      "items": {
+        "$ref": "#/$defs/Container"
+      },
+      "maxItems": 32,
+      "minItems": 1,
+      "title": "Containers",
+      "type": "array"
+    },
+    "networks": {
+      "items": {
+        "$ref": "#/$defs/Network"
+      },
+      "maxItems": 16,
+      "minItems": 1,
+      "title": "Networks",
+      "type": "array"
+    },
+    "volumes": {
+      "items": {
+        "$ref": "#/$defs/Volume"
+      },
+      "maxItems": 32,
+      "title": "Volumes",
+      "type": "array"
+    },
+    "resources": {
+      "$ref": "#/$defs/ResourceLimits"
+    },
+    "tasks": {
+      "items": {
+        "$ref": "#/$defs/TaskDefinition"
+      },
+      "maxItems": 200,
+      "title": "Tasks",
+      "type": "array"
+    },
+    "validator": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Plugin"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "scoring": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Plugin"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "flags": {
+      "items": {
+        "$ref": "#/$defs/FlagDefinition"
+      },
+      "maxItems": 100,
+      "title": "Flags",
+      "type": "array"
+    },
+    "browser": {
+      "$ref": "#/$defs/AccessRequirement"
+    },
+    "terminal": {
+      "$ref": "#/$defs/AccessRequirement"
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "description",
+    "difficulty",
+    "estimated_duration_minutes",
+    "containers",
+    "networks"
+  ],
+  "title": "LabDefinition",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

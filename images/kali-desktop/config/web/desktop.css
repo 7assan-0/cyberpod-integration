@@ -1,0 +1,8 @@
+:root { color-scheme: dark; font: 14px system-ui, sans-serif; }
+* { box-sizing: border-box; }
+body { margin: 0; height: 100dvh; display: flex; flex-direction: column; background: #10151e; color: #edf1f8; }
+header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 16px; border-bottom: 1px solid #344055; }
+#status { flex: 1; min-width: 120px; }
+button { background: #253148; color: inherit; border: 1px solid #596d8d; border-radius: 5px; padding: 7px 12px; cursor: pointer; }
+button:focus-visible { outline: 2px solid #80c9ff; outline-offset: 2px; }
+#screen { flex: 1; min-height: 0; overflow: hidden; }

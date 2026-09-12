@@ -19,6 +19,9 @@ class TicketStore:
 
     def issue(self, session_id, subject, generation, upstream, now=None):
         now = time.time() if now is None else now
+        for token, previous in list(self._tickets.items()):
+            if previous.expires_at <= now or (previous.session_id == session_id and previous.generation != generation):
+                self._drop(token)
         token = secrets.token_urlsafe(32)
         ticket = Ticket(token, session_id, subject, generation, now + self.ttl_seconds, upstream.rstrip('/'))
         self._tickets[token] = ticket

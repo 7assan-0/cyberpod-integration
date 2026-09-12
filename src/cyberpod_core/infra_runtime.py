@@ -6,6 +6,7 @@ import json
 import os
 import subprocess
 import sys
+from pathlib import PurePosixPath
 from uuid import uuid4
 
 from .errors import CoreError, ProviderCancelled
@@ -27,7 +28,9 @@ def _safe_mount(path: str, volume_id: str) -> str:
     allowed = path in {"/tmp", "/run", "/var/tmp"} or path.startswith(
         ("/home/", "/work/", "/data/", "/app/", "/var/lib/", "/var/log/")
     )
-    return path if allowed else f"/work/{volume_id}"
+    if not allowed or str(PurePosixPath(path)) != path or ".." in PurePosixPath(path).parts:
+        raise CoreError("RUNTIME_UNSUPPORTED", "Mount path is outside the worker contract", 503)
+    return path
 
 
 def to_infra_request(context: SessionContext) -> dict:
@@ -38,7 +41,7 @@ def to_infra_request(context: SessionContext) -> dict:
         uid, gid = int(uid_s), int(gid_s)
     volumes = [{
         "id": volume.id,
-        "size_mb": max(1, min(int(volume.size_mb), 2048)),
+        "size_mb": int(volume.size_mb),
         "uid": uid,
         "gid": gid,
     } for volume in definition.volumes]
@@ -51,10 +54,10 @@ def to_infra_request(context: SessionContext) -> dict:
             "image": container.image,
             "user": container.run_as,
             "resources": {
-                "cpus": max(0.1, min(float(container.resources.cpu), 4.0)),
-                "memory_mb": max(64, min(int(container.resources.memory_mb), 4096)),
-                "pids": max(16, min(int(container.resources.pids), 512)),
-                "shm_mb": 16,
+                "cpus": float(container.resources.cpu),
+                "memory_mb": int(container.resources.memory_mb),
+                "pids": int(container.resources.pids),
+                "shm_mb": int(container.extensions.get("shm_mb", 16)),
             },
             "healthcheck": {
                 "test": test,
@@ -68,14 +71,14 @@ def to_infra_request(context: SessionContext) -> dict:
         if container.mounts:
             service["volumes"] = [{
                 "volume": mount.volume,
-                "target": _safe_mount(mount.path, mount.volume),
+                "target": mount.path,
                 "read_only": mount.read_only,
             } for mount in container.mounts]
-        endpoints = [{"name": f"p{port}", "port": port, "protocol": "tcp"}
-                     for port in container.ports if 1024 <= port <= 65535]
+        endpoints = [{"name": f"p{port}", "port": port, "protocol": "http" if any(req.container == container.id and req.port == port and req.protocol == "http" for req in (definition.browser, definition.terminal)) else "tcp"}
+                     for port in container.ports]
         if endpoints:
             service["endpoints"] = endpoints
-        env = {key: value for key, value in container.environment.items() if not key.startswith("CYBERPOD_")}
+        env = dict(container.environment)
         if env:
             service["environment"] = env
         services.append(service)
@@ -90,7 +93,7 @@ def to_infra_request(context: SessionContext) -> dict:
         "session_id": str(context.session_id),
         "lab_id": context.lab_id,
         "expires_at": int(context.expires_at.timestamp()),
-        "startup_timeout_seconds": 45,
+        "startup_timeout_seconds": int(definition.extensions.get("startup_timeout_seconds", 120)),
         "network": {"internet": internet, "allow": allow},
         "volumes": volumes,
         "services": services,
@@ -110,23 +113,31 @@ def snapshot_from_infra(context: SessionContext, payload: dict) -> RuntimeSnapsh
             metadata={"infra_generation": generation, "infra_status": str(status or "")},
         ))
 
-    if status in {"STARTING", "READY", "FAILED", "CLEANUP_FAILED"}:
-        for network in context.definition.networks:
-            ids = grouped.get("network") or [f"net-{network.id}"]
-            add("network", network.id, ids[0] if ids else f"net-{network.id}")
-        for volume in context.definition.volumes:
-            ids = grouped.get("volume") or [f"vol-{volume.id}"]
-            match = next((item for item in ids if volume.id in str(item)), ids[0] if ids else f"vol-{volume.id}")
-            add("volume", volume.id, match)
-        for container in context.definition.containers:
-            ids = grouped.get("container") or [f"ctr-{container.id}"]
-            match = next((item for item in ids if container.id in str(item)), ids[0] if ids else f"ctr-{container.id}")
-            add("container", container.id, match)
+    # Use actual provider inventory. Never invent resources when start is partial.
+    for index, provider_id in enumerate(grouped.get("network", [])):
+        if index < len(context.definition.networks):
+            add("network", context.definition.networks[index].id, provider_id)
+    for volume in context.definition.volumes:
+        matches = [item for item in grouped.get("volume", []) if str(item).endswith("-" + volume.id)]
+        if len(matches) == 1:
+            add("volume", volume.id, matches[0])
+    observed = payload.get("services") or {}
+    for container in context.definition.containers:
+        provider_id = observed.get(container.id, {}).get("container_id")
+        if not provider_id:
+            matches = [item for item in grouped.get("container", []) if str(item).endswith("-" + container.id)]
+            provider_id = matches[0] if len(matches) == 1 else None
+        if provider_id and provider_id in grouped.get("container", []):
+            add("container", container.id, provider_id)
     health = INFRA_TO_HEALTH.get(payload.get("status"), "UNKNOWN")
     endpoints = []
     if health == "READY":
         for record in payload.get("endpoints") or []:
-            kind = "browser" if record.get("protocol") in {"http", "https"} else "terminal"
+            kind = next((kind for kind in ("browser", "terminal")
+                         if getattr(context.definition, kind).container == record.get("service_id")
+                         and getattr(context.definition, kind).port == record.get("port")), None)
+            if kind is None:
+                continue
             endpoints.append(EndpointRef(kind=kind, service_ref=f"{record.get('address') or '127.0.0.1'}:{record.get('port') or 0}"))
     return RuntimeSnapshot(health=health, resources=resources, endpoints=endpoints)
 
@@ -147,9 +158,9 @@ class MemoryInfraClient:
             "api_version": API, "session_id": sid, "lab_id": request["lab_id"],
             "generation": generation, "status": "READY", "error": None,
             "resources": {
-                "network": [f"net-{sid[:8]}"],
-                "volume": [f"vol-{volume['id']}" for volume in request.get("volumes", [])],
-                "container": [f"ctr-{service['id']}" for service in request["services"]],
+                "network": [f"net-{sid}-{generation}"],
+                "volume": [f"vol-{sid}-{generation}-{volume['id']}" for volume in request.get("volumes", [])],
+                "container": [f"ctr-{sid}-{generation}-{service['id']}" for service in request["services"]],
             },
             "endpoints": [
                 {"name": ep["name"], "service_id": service["id"], "protocol": ep["protocol"],
@@ -204,8 +215,10 @@ class CliInfraClient:
             body = json.loads(completed.stdout.decode() or "{}")
         except ValueError as exc:
             raise CoreError("RUNTIME_OPERATION_FAILED", "Infra worker returned invalid JSON", 503) from exc
-        if completed.returncode not in {0, 1} or body.get("error"):
-            code = (body.get("error") or {}).get("code") or "RUNTIME_OPERATION_FAILED"
+        if completed.returncode != 0 or body.get("error"):
+            detail = body.get("error")
+            code = detail.get("code") if isinstance(detail, dict) else detail
+            code = code or "RUNTIME_OPERATION_FAILED"
             raise CoreError(code if code != "NOT_FOUND" else "NOT_FOUND",
                             "Infra worker rejected the operation", 503 if code != "NOT_FOUND" else 404)
         return body
@@ -237,16 +250,32 @@ class InfraRuntime:
     def validate_lab(self, definition):
         if not definition.containers or not definition.networks:
             raise CoreError("RUNTIME_UNSUPPORTED", "Infra runtime needs containers and a session network", 503)
+        if len(definition.networks) != 1:
+            raise CoreError("RUNTIME_UNSUPPORTED", "Worker supports one isolated network per session", 503)
         for container in definition.containers:
             uid, gid = container.run_as.split(":")
             if int(uid) == 0 or int(gid) == 0:
                 raise CoreError("RUNTIME_UNSUPPORTED", "Infra runtime rejects root containers", 503)
 
+        if not self.simulated:
+            for container in definition.containers:
+                if container.secret_refs or not container.read_only_rootfs or set(container.networks) != {definition.networks[0].id}:
+                    raise CoreError("RUNTIME_UNSUPPORTED", "Worker cannot safely honor the requested container policy or secret injection", 503)
+                if any(key.startswith("CYBERPOD_") for key in container.environment):
+                    raise CoreError("RUNTIME_UNSUPPORTED", "Reserved environment variable", 503)
+                for mount in container.mounts:
+                    _safe_mount(mount.path, mount.volume)
+                res = container.resources
+                if not (.1 <= res.cpu <= 4 and 64 <= res.memory_mb <= 4096 and 16 <= res.pids <= 512):
+                    raise CoreError("RUNTIME_UNSUPPORTED", "Resource limits exceed worker policy", 503)
+                if any(port < 1024 for port in container.ports):
+                    raise CoreError("RUNTIME_UNSUPPORTED", "Worker endpoints must use unprivileged ports", 503)
+
     async def available(self):
         if self.simulated:
             return True
         try:
-            self.client._run(["doctor"])
+            await asyncio.to_thread(self.client._run, ["doctor"])
             return True
         except Exception:
             return False
@@ -258,7 +287,22 @@ class InfraRuntime:
         self.validate_lab(context.definition)
         if cancel.is_set():
             raise ProviderCancelled()
-        payload = await asyncio.to_thread(self.client.start, to_infra_request(context))
+        request = to_infra_request(context)
+        # A stopped worker session is CLEANED. Restart it explicitly as required
+        # by the worker contract, rather than retrying an invalid start.
+        try:
+            previous = await asyncio.to_thread(self.client.status, str(context.session_id))
+        except CoreError as exc:
+            if exc.code != "NOT_FOUND":
+                raise
+            previous = None
+        if previous and previous.get("status") == "CLEANED":
+            payload = await asyncio.to_thread(self.client.restart, request, previous["generation"])
+        else:
+            payload = await asyncio.to_thread(self.client.start, request)
+        if cancel.is_set():
+            await asyncio.to_thread(self.client.stop, str(context.session_id), payload.get("generation"))
+            raise ProviderCancelled()
         if payload.get("status") in {"FAILED", "CLEANUP_FAILED", "CLEANED"} and payload.get("error"):
             raise CoreError("RUNTIME_OPERATION_FAILED", "Infra start failed", 503)
         self._generations[str(context.session_id)] = str(payload.get("generation") or "")
@@ -289,7 +333,7 @@ def memory_factory():
 
 
 def factory():
-    mode = os.environ.get("CYBERPOD_INFRA_MODE", "memory")
+    mode = os.environ.get("CYBERPOD_INFRA_MODE", "cli")
     if mode == "cli":
         return InfraRuntime(CliInfraClient())
     return InfraRuntime(MemoryInfraClient())

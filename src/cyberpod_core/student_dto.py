@@ -41,7 +41,7 @@ def lab_dto(lab, engine) -> dict:
         "estimated_duration_minutes": lab.estimated_duration_minutes,
         "time_limit_seconds": lab.session_timeout_seconds,
         "required_tools": lab.required_tools,
-        "status": "published" if status == "AVAILABLE" else status.lower(),
+        "status": status,
         "objectives": [task.title for task in lab.tasks],
         "tasks": tasks,
         "max_score": int(max_score),
@@ -51,13 +51,12 @@ def lab_dto(lab, engine) -> dict:
 
 def session_dto(session: Session, engine) -> dict:
     lab = session.definition
-    completed = set(session.progress.completed_tasks)
+    completed = set(session.progress.completed_tasks) & {task.id for task in lab.tasks}
     tasks = []
-    previous_done = True
     for task in lab.tasks:
         if task.id in completed:
             state = "COMPLETED"
-        elif previous_done:
+        elif set(task.depends_on) <= completed:
             state = "AVAILABLE"
         else:
             state = "LOCKED"
@@ -68,7 +67,6 @@ def session_dto(session: Session, engine) -> dict:
             "points": _task_points(task),
             "status": state,
         })
-        previous_done = task.id in completed
     max_score = int(session.progress.maximum_score or sum(t["points"] for t in tasks) or 100)
     earned = int(session.progress.score)
     flag_states = session.progress.flags
@@ -80,7 +78,8 @@ def session_dto(session: Session, engine) -> dict:
         flag_status = "PENDING"
     else:
         flag_status = "NOT_SUBMITTED"
-    running = session.status == Status.RUNNING and session.operation is None
+    expired = engine.clock() >= session.expires_at
+    running = session.status == Status.RUNNING and session.operation is None and not expired
     desktop_url = None
     desktop_status = "UNAVAILABLE"
     if session.status == Status.RUNNING:
@@ -93,6 +92,8 @@ def session_dto(session: Session, engine) -> dict:
         "lab_id": session.lab_id,
         "lab_name": lab.name,
         "revision": session.revision,
+        "generation": session.generation,
+        "expired": expired,
         "status": public_status,
         "server_time": engine.clock().isoformat(),
         "created_at": session.created_at.isoformat(),
@@ -109,9 +110,9 @@ def session_dto(session: Session, engine) -> dict:
             "can_submit": running and not session.progress.completed,
         },
         "capabilities": {
-            "can_start": session.status in {Status.CREATED, Status.STOPPED} and session.operation is None,
+            "can_start": session.status in {Status.CREATED, Status.STOPPED} and session.operation is None and not expired,
             "can_stop": session.status in {Status.RUNNING, Status.STARTING, Status.ERROR} or session.operation is not None,
-            "can_restart": session.status in {Status.RUNNING, Status.STOPPED, Status.ERROR} and session.operation is None,
+            "can_restart": session.status in {Status.RUNNING, Status.STOPPED, Status.ERROR} and session.operation is None and not expired,
         },
         "desktop": {
             "status": desktop_status,

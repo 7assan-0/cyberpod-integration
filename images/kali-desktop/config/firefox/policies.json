@@ -1,0 +1,31 @@
+{
+  "policies": {
+    "DisableTelemetry": true,
+    "DisableFirefoxStudies": true,
+    "DisablePocket": true,
+    "DisableProfileImport": true,
+    "DontCheckDefaultBrowser": true,
+    "OverrideFirstRunPage": "",
+    "OverridePostUpdatePage": "",
+    "DNSOverHTTPS": {
+      "Enabled": false,
+      "Locked": true
+    },
+    "FirefoxHome": {
+      "Search": false,
+      "TopSites": false,
+      "SponsoredTopSites": false,
+      "Highlights": false,
+      "Pocket": false,
+      "SponsoredPocket": false,
+      "Snippets": false
+    },
+    "Preferences": {
+      "network.captive-portal-service.enabled": false,
+      "network.connectivity-service.enabled": false,
+      "network.prefetch-next": false,
+      "network.dns.disablePrefetch": true,
+      "browser.shell.checkDefaultBrowser": false
+    }
+  }
+}

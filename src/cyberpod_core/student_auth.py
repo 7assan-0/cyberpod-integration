@@ -38,9 +38,9 @@ class BrowserSession:
 
 class PasswordDirectory:
     def __init__(self, users: dict[str, str] | None = None):
-        source = users or dict(DEFAULT_USERS)
+        source = dict(DEFAULT_USERS if users is None else users)
         extra = os.environ.get("CYBERPOD_STUDENT_PASSWORD")
-        if extra:
+        if extra and "demo@cyberpod.local" in source:
             source["demo@cyberpod.local"] = extra
         self._users = {}
         for email, password in source.items():
@@ -48,6 +48,8 @@ class PasswordDirectory:
             self._users[email.lower()] = (salt, _hash_password(password, salt))
 
     def verify(self, email: str, password: str) -> bool:
+        if not isinstance(email, str) or not isinstance(password, str) or len(password) > 1024:
+            return False
         record = self._users.get(email.lower())
         if record is None:
             _hash_password(password, b"0" * 16)

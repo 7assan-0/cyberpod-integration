@@ -3,21 +3,19 @@ from uuid import uuid4
 
 from .models import Evaluation, FlagSubmission, SessionContext
 
-DEMO_FLAGS = {
-    "hydra-ssh-101": "CYBERPOD{hydra_ssh_cracked}",
-    "hello-lab": "CYBERPOD{hello}",
-}
 
 
 class LocalDemoValidator:
+    def __init__(self, flags=None):
+        self.flags = dict(flags or {})
+
     async def submit(self, context: SessionContext, submission: FlagSubmission) -> Evaluation:
-        expected = DEMO_FLAGS.get(context.lab_id)
+        expected = self.flags.get(context.lab_id)
         accepted = expected is not None and submission.value == expected
         task_ids = [task.id for task in context.definition.tasks]
         completed = list(task_ids) if accepted else list(context.progress.completed_tasks)
         maximum = 100 if task_ids else 0
-        per = maximum // len(task_ids) if task_ids else 0
-        score = per * len(completed)
+        score = maximum if accepted else context.progress.score
         flags = dict(context.progress.flags)
         flags[submission.flag_id] = "accepted" if accepted else "rejected"
         return Evaluation(

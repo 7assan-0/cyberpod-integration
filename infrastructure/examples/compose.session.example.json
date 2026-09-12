@@ -1,0 +1,218 @@
+{
+  "name": "cp-f0ba2f46768c",
+  "services": {
+    "client": {
+      "image": "cyberpod/infra-probe:dev",
+      "pull_policy": "never",
+      "user": "1000:1000",
+      "init": true,
+      "read_only": true,
+      "privileged": false,
+      "cgroup": "private",
+      "ipc": "private",
+      "cap_drop": [
+        "ALL"
+      ],
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "restart": "no",
+      "stop_grace_period": "10s",
+      "networks": {
+        "lab": {
+          "aliases": [
+            "client"
+          ]
+        }
+      },
+      "dns": [
+        "127.0.0.1"
+      ],
+      "dns_search": [
+        "."
+      ],
+      "dns_opt": [
+        "timeout:1",
+        "attempts:1"
+      ],
+      "sysctls": {
+        "net.ipv6.conf.all.disable_ipv6": "1",
+        "net.ipv6.conf.default.disable_ipv6": "1",
+        "net.ipv4.ip_forward": "0"
+      },
+      "cpus": 0.5,
+      "mem_limit": "256m",
+      "memswap_limit": "256m",
+      "pids_limit": 64,
+      "shm_size": "16m",
+      "ulimits": {
+        "nofile": {
+          "soft": 1024,
+          "hard": 4096
+        },
+        "core": {
+          "soft": 0,
+          "hard": 0
+        }
+      },
+      "logging": {
+        "driver": "local",
+        "options": {
+          "max-size": "5m",
+          "max-file": "2",
+          "compress": "false",
+          "mode": "non-blocking",
+          "max-buffer-size": "1m"
+        }
+      },
+      "labels": {
+        "io.cyberpod.infra.managed": "true",
+        "io.cyberpod.infra.instance": "worker-dev",
+        "io.cyberpod.infra.session": "00000000-0000-4000-8000-000000000001",
+        "io.cyberpod.infra.generation": "static-preview",
+        "io.cyberpod.infra.lab": "infra-hello",
+        "io.cyberpod.infra.expires": "2000000000",
+        "io.cyberpod.infra.service": "client"
+      },
+      "environment": {
+        "CYBERPOD_SESSION_ID": "00000000-0000-4000-8000-000000000001",
+        "CYBERPOD_LAB_ID": "infra-hello",
+        "CYBERPOD_SERVICE_ID": "client",
+        "CYBERPOD_EXPIRES_AT": "2000000000"
+      },
+      "healthcheck": {
+        "test": [
+          "CMD",
+          "python3",
+          "/probe.py",
+          "health"
+        ],
+        "interval": "2s",
+        "timeout": "1s",
+        "retries": 10,
+        "start_period": "2s"
+      },
+      "tmpfs": [
+        "/tmp:rw,nosuid,nodev,noexec,size=16m,uid=1000,gid=1000,mode=0700"
+      ],
+      "volumes": [
+        {
+          "type": "volume",
+          "source": "scratch",
+          "target": "/work/shared",
+          "read_only": false,
+          "volume": {
+            "nocopy": true
+          }
+        }
+      ]
+    },
+    "target": {
+      "image": "cyberpod/infra-probe:dev",
+      "pull_policy": "never",
+      "user": "1000:1000",
+      "init": true,
+      "read_only": true,
+      "privileged": false,
+      "cgroup": "private",
+      "ipc": "private",
+      "cap_drop": [
+        "ALL"
+      ],
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "restart": "no",
+      "stop_grace_period": "10s",
+      "networks": {
+        "lab": {
+          "aliases": [
+            "target"
+          ]
+        }
+      },
+      "dns": [
+        "127.0.0.1"
+      ],
+      "dns_search": [
+        "."
+      ],
+      "dns_opt": [
+        "timeout:1",
+        "attempts:1"
+      ],
+      "sysctls": {
+        "net.ipv6.conf.all.disable_ipv6": "1",
+        "net.ipv6.conf.default.disable_ipv6": "1",
+        "net.ipv4.ip_forward": "0"
+      },
+      "cpus": 0.5,
+      "mem_limit": "256m",
+      "memswap_limit": "256m",
+      "pids_limit": 64,
+      "shm_size": "16m",
+      "ulimits": {
+        "nofile": {
+          "soft": 1024,
+          "hard": 4096
+        },
+        "core": {
+          "soft": 0,
+          "hard": 0
+        }
+      },
+      "logging": {
+        "driver": "local",
+        "options": {
+          "max-size": "5m",
+          "max-file": "2",
+          "compress": "false",
+          "mode": "non-blocking",
+          "max-buffer-size": "1m"
+        }
+      },
+      "labels": {
+        "io.cyberpod.infra.managed": "true",
+        "io.cyberpod.infra.instance": "worker-dev",
+        "io.cyberpod.infra.session": "00000000-0000-4000-8000-000000000001",
+        "io.cyberpod.infra.generation": "static-preview",
+        "io.cyberpod.infra.lab": "infra-hello",
+        "io.cyberpod.infra.expires": "2000000000",
+        "io.cyberpod.infra.service": "target"
+      },
+      "environment": {
+        "CYBERPOD_SESSION_ID": "00000000-0000-4000-8000-000000000001",
+        "CYBERPOD_LAB_ID": "infra-hello",
+        "CYBERPOD_SERVICE_ID": "target",
+        "CYBERPOD_EXPIRES_AT": "2000000000"
+      },
+      "healthcheck": {
+        "test": [
+          "CMD",
+          "python3",
+          "/probe.py",
+          "health"
+        ],
+        "interval": "2s",
+        "timeout": "1s",
+        "retries": 10,
+        "start_period": "2s"
+      },
+      "tmpfs": [
+        "/tmp:rw,nosuid,nodev,noexec,size=16m,uid=1000,gid=1000,mode=0700"
+      ]
+    }
+  },
+  "networks": {
+    "lab": {
+      "external": true,
+      "name": "cp-f0ba2f46768c-lab"
+    }
+  },
+  "volumes": {
+    "scratch": {
+      "external": true,
+      "name": "cp-f0ba2f46768c-scratch"
+    }
+  }
+}

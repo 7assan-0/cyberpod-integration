@@ -11,6 +11,7 @@ dependencies = ["aiohttp==3.13.5", "pydantic==2.13.5", "PyYAML==6.0.3"]
 
 [project.scripts]
 cyberpod-core = "cyberpod_core.__main__:main"
+cyberpod-integration = "cyberpod_integration.__main__:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

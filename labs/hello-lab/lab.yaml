@@ -1,0 +1,55 @@
+schema_version: "1.0"
+id: hello-lab
+name: Hello Lab
+description: Minimal configuration-only lab for the Core lifecycle acceptance test.
+version: "1.0.0"
+difficulty: beginner
+estimated_duration_minutes: 5
+session_timeout_seconds: 600
+required_tools: []
+resources:
+  cpu: 0.5
+  memory_mb: 128
+  pids: 32
+  storage_mb: 128
+networks:
+  - id: training
+    scope: session
+    internet: none
+volumes:
+  - id: scratch
+    ephemeral: true
+    size_mb: 32
+containers:
+  - id: greeting
+    image: busybox:1.37.0
+    role: target
+    command: ["sh", "-c", "echo hello > /scratch/hello; sleep 86400"]
+    networks: [training]
+    resources:
+      cpu: 0.5
+      memory_mb: 128
+      pids: 32
+      storage_mb: 64
+    mounts:
+      - volume: scratch
+        path: /scratch
+    healthcheck:
+      command: ["test", "-f", "/scratch/hello"]
+      interval_seconds: 1
+      timeout_seconds: 1
+      retries: 10
+    run_as: "1000:1000"
+    read_only_rootfs: true
+tasks:
+  - id: observe
+    title: Observe the session lifecycle
+    instructions: Start the session, poll RUNNING, stop it, then request cleanup.
+validator: null
+scoring: null
+flags: []
+browser:
+  required: false
+terminal:
+  required: false
+
