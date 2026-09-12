@@ -42,7 +42,8 @@ After login, send `X-CSRF-Token` with mutations and JSON request bodies. Flag su
 
 ```bash
 python -m unittest discover -s tests -t . -v
-python -m unittest discover -s infrastructure/tests -v
+cd infrastructure
+python -m unittest discover -s tests -v
 ```
 
 See [docs/REPAIR_REPORT.md](docs/REPAIR_REPORT.md) for restored source provenance, verified behavior and outstanding deployment work. Original Core contracts are under `docs/core/`; worker contracts are under `infrastructure/docs/`. See [GATEWAY.md](GATEWAY.md) and [images/README.md](images/README.md) for the desktop boundary and images.

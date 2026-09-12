@@ -12,9 +12,11 @@ RATE_LIMITER = web.AppKey('rate_limiter', object)
 REQUIRE_HTTPS = web.AppKey('require_https', bool)
 
 class RateLimiter:
-    def __init__(self, limit=60, window=60.0, auth_limit=10):
+    def __init__(self, limit=60, window=60.0, auth_limit=10, desktop_limit=300):
         self.limit, self.window, self.auth_limit = limit, window, auth_limit
+        self.desktop_limit = desktop_limit
         self._hits, self._auth = defaultdict(deque), defaultdict(deque)
+        self._desktop = defaultdict(deque)
 
     def _allow(self, bucket, limit, now):
         while bucket and now - bucket[0] >= self.window:
@@ -26,7 +28,10 @@ class RateLimiter:
 
     def check(self, key, path, now=None):
         now = time.monotonic() if now is None else now
-        if not self._allow(self._hits[key], self.limit, now):
+        desktop = path.startswith('/desktop/')
+        bucket = self._desktop[key] if desktop else self._hits[key]
+        limit = self.desktop_limit if desktop else self.limit
+        if not self._allow(bucket, limit, now):
             raise CoreError('RATE_LIMITED', 'Too many requests', 429)
         if path.endswith('/login') or path.endswith('/auth/login'):
             if not self._allow(self._auth[key], self.auth_limit, now):

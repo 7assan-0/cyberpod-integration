@@ -25,11 +25,12 @@ The original public checkout could not run its tests or entrypoint: it omitted C
 - 94 Core, API, gateway and regression tests passed locally.
 - 39 worker tests passed locally.
 - Student entrypoint help and frontend production build passed.
-- Chrome browser checks are included in the companion repository's GitHub Actions workflow.
+- Chrome browser simulation checks (desktop/mobile) and the frontend-to-student-API lifecycle passed in GitHub Actions.
+- GitHub Actions built the real Kali and training-target images, booted a healthy XFCE/noVNC desktop, reached the target from Kali, rejected a connection to the other test network, and removed test containers afterward.
 
 ## Deployment work still required
 
-Actual OCI builds and a Kali desktop session have not run in this authoring environment because Docker is unavailable. This report does not certify container or network isolation on a live worker.
+The container smoke test uses two internal Docker networks on a GitHub runner. It verifies these image and network paths; it does not certify the production worker's firewall configuration or the complete student-to-worker desktop path.
 
 The original worker's `stop` destroys its workloads and ephemeral storage. The adapter can explicitly restart a cleaned worker session, but it cannot preserve a paused desktop's files. A resumable stop interface belongs to the worker contract and remains an integration request.
 

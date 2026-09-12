@@ -1,4 +1,5 @@
 """Opt-in Docker image acceptance, run on a disposable Linux CI worker."""
+import asyncio
 import base64
 import json
 import os
@@ -8,6 +9,41 @@ import subprocess
 import tempfile
 import time
 from uuid import uuid4
+
+
+async def check_gateway(session_id, port, password):
+    from aiohttp import web
+    from playwright.async_api import async_playwright, expect
+    from cyberpod_core.hardening import apply_hardening
+    from cyberpod_gateway.app import DesktopGateway, create_app
+
+    gateway = DesktopGateway(public_base='')
+    gateway.register(session_id, f'http://127.0.0.1:{port}', password)
+    app = create_app(gateway, operator_token=secrets.token_urlsafe(32), subject_for_request=lambda _: 'image-smoke')
+    apply_hardening(app, require_https=False)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    try:
+        site = web.TCPSite(runner, '127.0.0.1', 0)
+        await site.start()
+        address = runner.addresses[0]
+        grant, _ = gateway.issue_url(session_id, 'image-smoke', 1)
+        async with async_playwright() as playwright:
+            browser = await playwright.chromium.launch()
+            try:
+                page = await browser.new_page()
+                errors = []
+                page.on('pageerror', lambda error: errors.append(str(error)))
+                await page.goto(f'http://127.0.0.1:{address[1]}' + grant)
+                await expect(page.get_by_role('status')).to_have_text('Connected', timeout=30000)
+                assert not errors, errors
+                gateway.revoke(session_id)
+                await expect(page.get_by_role('status')).to_have_text('Disconnected. Reconnect to continue.', timeout=10000)
+            finally:
+                await browser.close()
+    finally:
+        await runner.cleanup()
+    print('PASS: Chrome connects to actual Kali through the authenticated gateway; revocation disconnects it')
 
 
 def run(*args, check=True, timeout=60):
@@ -55,13 +91,15 @@ def main():
                 health(name)
             desktop = prefix + '-desktop'
             names.append(desktop)
+            vnc_password = secrets.token_urlsafe(18)
             run('docker', 'run', '-d', '--name', desktop, '--network', networks[0], '--user', '1000:1000',
+                '-p', '127.0.0.1::8080',
                 '--read-only', '--cap-drop=ALL', '--security-opt', 'no-new-privileges', '--memory', '2g', '--pids-limit', '256',
                 '--shm-size', '128m', '--tmpfs', '/home/student:rw,nosuid,nodev,size=512m,uid=1000,gid=1000,mode=0700',
                 '--tmpfs', '/tmp:rw,nosuid,nodev,size=128m,mode=1777',
                 '-e', f'CYBERPOD_SESSION_ID={session_id}', '-e', 'CYBERPOD_LAB_ID=smoke',
                 '-e', 'CYBERPOD_TARGET_URL=http://target:8080/login',
-                '-e', 'CYBERPOD_VNC_PASSWORD=' + secrets.token_urlsafe(18), 'cyberpod/kali-desktop:dev')
+                '-e', 'CYBERPOD_VNC_PASSWORD=' + vnc_password, 'cyberpod/kali-desktop:dev')
             health(desktop)
             auth = base64.b64encode(('admin:' + config['password']).encode()).decode()
             probe = "import urllib.request; r=urllib.request.Request('http://target:8080/vault',headers={'Authorization':'Basic " + auth + "'}); assert urllib.request.urlopen(r,timeout=3).status==200"
@@ -71,6 +109,8 @@ def main():
             run('docker', 'exec', desktop, 'python3', '-c', isolated)
             run('docker', 'exec', desktop, 'sh', '-c', 'command -v hydra && command -v nmap && command -v firefox-esr')
             print('PASS: actual XFCE/VNC/noVNC health, training target login, and cross-network connection rejection')
+            port = run('docker', 'port', desktop, '8080/tcp').stdout.strip().rsplit(':', 1)[1]
+            asyncio.run(check_gateway(session_id, int(port), vnc_password))
         finally:
             for name in reversed(names):
                 run('docker', 'rm', '-f', name, check=False)
