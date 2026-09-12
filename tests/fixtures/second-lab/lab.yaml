@@ -1,0 +1,20 @@
+schema_version: "1.0"
+id: second-lab
+name: Second Configuration Lab
+description: Independently named fixture proving addition without any Core code change.
+version: "1.0.0"
+difficulty: beginner
+estimated_duration_minutes: 2
+session_timeout_seconds: 300
+required_tools: []
+networks:
+  - id: isolated
+    internet: none
+containers:
+  - id: workload
+    image: busybox:1.37.0
+    networks: [isolated]
+    command: ["sleep", "86400"]
+    healthcheck:
+      command: ["true"]
+tasks: []

@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>CyberPod Desktop</title>
+  <link rel="stylesheet" href="desktop.css">
+</head>
+<body>
+  <header>
+    <strong>CyberPod Desktop</strong>
+    <span id="status" role="status" aria-live="polite">Connecting…</span>
+    <button id="reconnect" type="button">Reconnect</button>
+    <button id="fullscreen" type="button">Full screen</button>
+  </header>
+  <main id="screen" aria-label="Kali Linux desktop" tabindex="0"></main>
+  <script type="module" src="desktop.js"></script>
+</body>
+</html>

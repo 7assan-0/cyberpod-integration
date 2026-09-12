@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+unset SESSION_MANAGER DBUS_SESSION_BUS_ADDRESS
+# Started from the immutable image, never from a noexec home tmpfs.
+exec dbus-run-session -- xfce4-session

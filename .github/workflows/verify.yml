@@ -1,0 +1,32 @@
+name: Verify integration
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e . -e infrastructure
+      - run: python -m unittest discover -s tests -t . -v
+      - run: python -m unittest discover -s tests -v
+        working-directory: infrastructure
+      - run: python -m cyberpod_integration --help
+  images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e . playwright
+      - run: python -m playwright install --with-deps chromium
+      - name: Build real Kali and target images
+        run: bash images/build.sh
+      - name: Boot desktop, reach target, check isolation and cleanup
+        run: python tests/live_images.py

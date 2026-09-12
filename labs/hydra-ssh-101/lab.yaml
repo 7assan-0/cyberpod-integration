@@ -1,7 +1,7 @@
 schema_version: "1.0"
 id: hydra-ssh-101
 name: Hydra Lab
-description: Training lab for SSH recon and Hydra. Demo validator accepts the published flag only.
+description: API acceptance scenario for the Hydra workflow; use cyberpod-demo for the browser simulation.
 version: "1.0.0"
 difficulty: beginner
 estimated_duration_minutes: 20
@@ -69,7 +69,7 @@ tasks:
       points: 15
   - id: submit
     title: Submit flag
-    instructions: CYBERPOD{hydra_ssh_cracked}
+    instructions: Retrieve the flag from the training target and submit it.
     depends_on: [creds]
     extensions:
       points: 20

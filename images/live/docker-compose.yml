@@ -1,19 +1,35 @@
+# Single-user connectivity fixtures. These do not provide a Kali desktop.
 services:
   target:
-    image: cyberpod/hydra-target:dev
-    build: ../hydra-target-live
+    image: cyberpod/target-probe:dev
+    build:
+      context: ..
+      dockerfile: hydra-target-live/Dockerfile
     user: "1000:1000"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 256m
+    pids_limit: 32
     networks: [lab]
-    ports: ["8080:8080"]
+    ports: ["127.0.0.1:8080:8080"]
   kali:
-    image: cyberpod/kali-desktop:dev
+    image: cyberpod/desktop-probe:dev
     build: ../kali-desktop-live
     user: "1000:1000"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 128m
+    pids_limit: 32
     environment:
       TARGET_URL: http://target:8080
     networks: [lab]
-    ports: ["6080:6080"]
-    depends_on: [target]
+    ports: ["127.0.0.1:6080:6080"]
+    depends_on:
+      target:
+        condition: service_healthy
 networks:
   lab:
     driver: bridge
+    internal: true

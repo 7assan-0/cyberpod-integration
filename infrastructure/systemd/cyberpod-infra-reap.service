@@ -1,0 +1,16 @@
+[Unit]
+Description=Reconcile expired, failed and orphan CyberPod infrastructure
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/opt/cyberpod/infra
+ExecStart=/usr/bin/python3 -m cyberpod_infra --policy /etc/cyberpod-infra/worker.json reap
+TimeoutStartSec=10min
+UMask=0077
+NoNewPrivileges=true
+ProtectHome=true
+PrivateTmp=true
+# Do not use PrivateNetwork: iptables must operate in the Docker host namespace.

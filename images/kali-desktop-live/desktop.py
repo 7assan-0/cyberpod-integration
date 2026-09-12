@@ -1,5 +1,5 @@
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-import json, os, urllib.request
+import html, json, os, urllib.request
 TARGET = os.environ.get('TARGET_URL', 'http://target:8080')
 PORT = int(os.environ.get('CYBERPOD_NOVNC_PORT', '6080'))
 class Handler(BaseHTTPRequestHandler):
@@ -18,7 +18,7 @@ class Handler(BaseHTTPRequestHandler):
         if self.path in ('/health', '/ready'):
             return self.reply(200, 'ready', 'text/plain')
         if self.path in ('/', '/vnc.html', '/desktop.html'):
-            return self.reply(200, '<h1>CyberPod Kali desktop</h1><p>Target: '+TARGET+'</p>')
+            return self.reply(200, '<h1>CyberPod connectivity probe</h1><p>This fixture is not a Kali desktop.</p><p>Target: '+html.escape(TARGET)+'</p>')
         if self.path == '/probe':
             try:
                 with urllib.request.urlopen(TARGET + '/health', timeout=3) as response:

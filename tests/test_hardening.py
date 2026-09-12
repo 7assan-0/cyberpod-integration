@@ -3,6 +3,19 @@ from aiohttp import web
 from aiohttp.test_utils import AioHTTPTestCase
 from cyberpod_core.hardening import RateLimiter, apply_hardening
 from cyberpod_core.logging_config import JSONFormatter
+from cyberpod_core.errors import CoreError
+
+class DesktopRateTests(unittest.TestCase):
+    def test_novnc_assets_do_not_exhaust_the_student_api_budget(self):
+        limiter = RateLimiter(limit=5, desktop_limit=100)
+        for _ in range(100):
+            limiter.check('student', '/desktop/session/core/rfb.js', now=0)
+        with self.assertRaises(CoreError):
+            limiter.check('student', '/desktop/session/core/rfb.js', now=0)
+        for _ in range(5):
+            limiter.check('student', '/api/v1/sessions', now=0)
+        with self.assertRaises(CoreError):
+            limiter.check('student', '/api/v1/sessions', now=0)
 
 class HardeningTests(AioHTTPTestCase):
     async def get_application(self):
@@ -14,7 +27,7 @@ class HardeningTests(AioHTTPTestCase):
         app.router.add_get('/healthz', ok)
         app.router.add_get('/labs', ok)
         app.router.add_post('/api/v1/auth/login', login)
-        apply_hardening(app, limiter=RateLimiter(limit=5, window=60, auth_limit=2), require_https=True)
+        apply_hardening(app, limiter=RateLimiter(limit=5, window=60, auth_limit=2), require_https=True, trusted_proxies={'127.0.0.1'})
         return app
 
     async def test_http_api_rejected_when_https_required(self):

@@ -1,0 +1,2 @@
+# Tool only; targets, passwords, wordlists, tasks and flags belong to Lab plugins.
+hydra
